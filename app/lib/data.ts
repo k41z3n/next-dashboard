@@ -1,5 +1,5 @@
 import { unstable_noStore as noStore } from 'next/cache';
- 
+
 import { sql } from '@vercel/postgres';
 import {
   CustomerField,
@@ -9,6 +9,7 @@ import {
   LatestInvoiceRaw,
   User,
   Revenue,
+  FormattedCustomersTable
 } from './definitions';
 import { formatCurrency } from './utils';
 
@@ -168,9 +169,9 @@ export async function fetchInvoiceById(id: string) {
       // Convert amount from cents to dollars
       amount: invoice.amount / 100,
     }));
-    
-    console.log(invoice); 
-    console.log(invoice.length); 
+
+    console.log(invoice);
+    console.log(invoice.length);
     return invoice[0];
   } catch (error) {
     console.error('Database Error:', error);
@@ -181,12 +182,20 @@ export async function fetchInvoiceById(id: string) {
 export async function fetchCustomers() {
   noStore();
   try {
-    const data = await sql<CustomerField>`
+    //- Get the total number of invoices for each customer
+    const data = await sql<FormattedCustomersTable>`
       SELECT
-        id,
-        name
+        customers.id,
+        customers.name,
+        customers.email,
+        customers.image_url,
+        COUNT(invoices.id) AS total_invoices,
+        SUM(CASE WHEN invoices.status = 'pending' THEN invoices.amount ELSE 0 END) AS total_pending,
+        SUM(CASE WHEN invoices.status = 'paid' THEN invoices.amount ELSE 0 END) AS total_paid
       FROM customers
-      ORDER BY name ASC
+      LEFT JOIN invoices ON customers.id = invoices.customer_id
+      GROUP BY customers.id, customers.name, customers.email, customers.image_url
+      ORDER BY customers.name ASC
     `;
 
     const customers = data.rows;
