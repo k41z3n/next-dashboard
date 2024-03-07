@@ -182,7 +182,6 @@ export async function fetchInvoiceById(id: string) {
 export async function fetchCustomers() {
   noStore();
   try {
-    //- Get the total number of invoices for each customer
     const data = await sql<FormattedCustomersTable>`
       SELECT
         customers.id,
